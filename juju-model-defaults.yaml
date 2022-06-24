@@ -1,0 +1,18 @@
+cloudinit-userdata: |
+  write_files:
+    - content: |
+        [Match]
+         Name=vrnic0
+      owner: "root:root"
+      path: /etc/systemd/network/vrnic0.network
+      permissions: "0644"
+    - content: |
+         [NetDev]
+         Name=vrnic0
+         Kind=dummy
+      owner: "root:root"
+      path: /etc/systemd/network/vrnic0.netdev
+      permissions: "0644"
+  postruncmd:
+    - ip link add name vrnic0 type dummy
+    - ip link set vrnic0 up

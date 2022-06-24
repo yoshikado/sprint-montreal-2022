@@ -1,0 +1,254 @@
+series: focal
+variables:
+  openstack-channel:    &openstack-channel    yoga/stable
+  ovn-channel:          &ovn-channel          22.03/stable
+  openstack-origin:     &openstack-origin     cloud:focal-yoga
+  worker-multiplier:    &worker-multiplier    0.1
+machines:
+  '0': {constraints: instance-type=t3a.large}
+  '1': {constraints: instance-type=t3a.large}
+  '2': {constraints: instance-type=t3a.large}
+  '3': {constraints: instance-type=t3a.medium}
+  '4': {constraints: instance-type=t3a.medium}
+  '5': {constraints: instance-type=t3a.medium}
+  '6': {constraints: instance-type=t3a.medium}
+  '7': {constraints: instance-type=t3a.medium}
+  '8': {constraints: instance-type=t3a.medium}
+  # nova-compute
+  '100': {constraints: instance-type=c5a.large}
+  '101': {constraints: instance-type=c5a.large}
+  '102': {constraints: instance-type=c5a.large}
+  '103': {constraints: instance-type=c5a.large}
+  '104': {constraints: instance-type=c5a.large}
+  '105': {constraints: instance-type=c5a.large}
+
+applications:
+  mysql-innodb-cluster:
+    charm: mysql-innodb-cluster
+    channel: 8.0/stable
+    num_units: 3
+    options:
+      max-connections: 1000
+      innodb-buffer-pool-size: 256M
+      tuning-level: fast
+    to:
+    - 0
+    - 1
+    - 2
+  ovn-central:
+    charm: ovn-central
+    channel: *ovn-channel
+    constraints: instance-type=t3a.medium
+    num_units: 3
+    to:
+    - 0
+    - 1
+    - 2
+  glance-simplestreams-sync:
+    charm: glance-simplestreams-sync
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      mirror_list: '[{ url: "http://cloud-images.ubuntu.com/releases/", name_prefix:
+        "ubuntu:released", path: "streams/v1/index.sjson", max: 1, item_filters: ["release~(focal|jammy)",
+        "arch~(x86_64|amd64)", "ftype~(disk1.img|disk.img)"] }]'
+      use_swift: false
+    to:
+    - 0
+  rabbitmq-server:
+    charm: rabbitmq-server
+    channel: 3.9/stable
+    num_units: 1
+    to:
+    - 1
+  vault:
+    charm: vault
+    channel: 1.7/stable
+    constraints: instance-type=t3a.medium
+    num_units: 1
+    options:
+      auto-generate-root-ca-cert: true
+    to:
+    - 2
+  glance:
+    charm: glance
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      worker-multiplier: *worker-multiplier
+    to:
+    - 3
+  keystone:
+    charm: keystone
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      preferred-api-version: 3
+      worker-multiplier: *worker-multiplier
+    to:
+    - 4
+  neutron-api:
+    charm: neutron-api
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      worker-multiplier: *worker-multiplier
+      dns-domain: openstack.lan.
+      enable-ml2-dns: true
+      enable-ml2-port-security: true
+      flat-network-providers: ''
+      manage-neutron-plugin-legacy-mode: false
+      neutron-security-groups: true
+      vlan-ranges: physnet1
+    to:
+    - 5
+  nova-cloud-controller:
+    charm: nova-cloud-controller
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      worker-multiplier: *worker-multiplier
+      network-manager: Neutron
+    to:
+    - 6
+  neutron-api-plugin-ovn:
+    charm: neutron-api-plugin-ovn
+    channel: *openstack-channel
+  octavia:
+    charm: octavia
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      lb-mgmt-controller-cacert: include-base64://certs/controller_ca.pem
+      lb-mgmt-controller-cert: include-base64://certs/controller_cert_bundle.pem
+      lb-mgmt-issuing-ca-key-passphrase: foobar
+      lb-mgmt-issuing-ca-private-key: include-base64://certs/controller_ca_key.pem
+      lb-mgmt-issuing-cacert: include-base64://certs/controller_ca.pem
+      loadbalancer-topology: ACTIVE_STANDBY
+      amp-ssh-key-name: amp_ssh_pub_key
+      amp-ssh-pub-key: include-base64://keys/ssh/amphora_ssh.pub
+    to:
+    - 7
+  octavia-diskimage-retrofit:
+    charm: octavia-diskimage-retrofit
+    channel: *openstack-channel
+    options:
+      amp-image-tag: octavia-amphora
+      retrofit-uca-pocket: ussuri
+      retrofit-series: focal
+  octavia-ovn-chassis:
+    charm: ovn-chassis
+    channel: *ovn-channel
+    options:
+      disable-mlockall: true
+      ovn-bridge-mappings: physnet1:br-data
+  ovn-chassis:
+    charm: ovn-chassis
+    channel: *ovn-channel
+    options:
+      bridge-interface-mappings: br-data:vrnic0
+      ovn-bridge-mappings: physnet1:br-data
+  placement:
+    charm: placement
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+      worker-multiplier: *worker-multiplier
+    to:
+    - 8
+  nova-compute:
+    charm: yoshi-nova-compute # LP:1977803
+    channel: latest/beta
+    constraints: instance-type=c5a.large
+    num_units: 6
+    options:
+      openstack-origin: *openstack-origin
+      enable-live-migration: False
+      enable-resize: False
+      reserved-host-memory: 512
+      force-raw-images: False
+      virt-type: qemu
+    to:
+    - 100
+    - 101
+    - 102
+    - 103
+    - 104
+    - 105
+  glance-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  keystone-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  neutron-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  nova-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  octavia-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  placement-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+  vault-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
+relations:
+# openstack
+- ['glance-simplestreams-sync:identity-service', 'keystone:identity-service']
+- ['glance:identity-service', 'keystone:identity-service']
+- ['glance:image-service', 'nova-cloud-controller:image-service']
+- ['glance:image-service', 'nova-compute:image-service']
+- ['keystone:identity-service', 'neutron-api:identity-service']
+- ['keystone:identity-service', 'nova-cloud-controller:identity-service']
+- ['keystone:identity-service', 'placement:identity-service']
+- ['neutron-api-plugin-ovn:neutron-plugin', 'neutron-api:neutron-plugin-api-subordinate']
+- ['neutron-api-plugin-ovn:ovsdb-cms', 'ovn-central:ovsdb-cms']
+- ['neutron-api:neutron-api', 'nova-cloud-controller:neutron-api']
+- ['nova-cloud-controller:cloud-compute', 'nova-compute:cloud-compute']
+- ['nova-cloud-controller:placement', 'placement:placement']
+- ['nova-compute:neutron-plugin', 'ovn-chassis:nova-compute']
+- ['ovn-central:ovsdb', 'ovn-chassis:ovsdb']
+- ['ovn-chassis:certificates', 'vault:certificates']
+- ['ovn-central:certificates', 'vault:certificates']
+- ['neutron-api-plugin-ovn:certificates', 'vault:certificates']
+# rabbitmq-server
+- ['glance:amqp', 'rabbitmq-server:amqp']
+- ['neutron-api:amqp', 'rabbitmq-server:amqp']
+- ['nova-cloud-controller:amqp', 'rabbitmq-server:amqp']
+- ['nova-compute:amqp', 'rabbitmq-server:amqp']
+- ['placement:amqp', 'rabbitmq-server:amqp']
+# mysql-router
+- ['glance-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['glance-mysql-router:shared-db', 'glance:shared-db']
+- ['keystone-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['keystone-mysql-router:shared-db', 'keystone:shared-db']
+- ['neutron-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['neutron-mysql-router:shared-db', 'neutron-api:shared-db']
+- ['nova-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['nova-mysql-router:shared-db', 'nova-cloud-controller:shared-db']
+- ['placement-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['placement-mysql-router:shared-db', 'placement:shared-db']
+- ['vault-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['vault-mysql-router:shared-db', 'vault:shared-db']
+# octavia
+- ['glance-simplestreams-sync:juju-info', 'octavia-diskimage-retrofit:juju-info']
+- ['keystone:identity-credentials', 'octavia-diskimage-retrofit:identity-credentials']
+- ['keystone:identity-service', 'octavia:identity-service']
+- ['neutron-api:neutron-load-balancer', 'octavia:neutron-api']
+- ['octavia:amqp', 'rabbitmq-server:amqp']
+- ['octavia-mysql-router:shared-db', 'octavia:shared-db']
+- ['mysql-innodb-cluster:db-router', 'octavia-mysql-router:db-router']
+- ['octavia-ovn-chassis:ovsdb-subordinate', 'octavia:ovsdb-subordinate']
+- ['octavia-ovn-chassis:ovsdb', 'ovn-central:ovsdb']
+- ['octavia-ovn-chassis:certificates', 'vault:certificates']
+- ['octavia:ovsdb-cms', 'ovn-central:ovsdb-cms']
