@@ -8,12 +8,13 @@ machines:
   '0': {constraints: instance-type=t3a.large}
   '1': {constraints: instance-type=t3a.large}
   '2': {constraints: instance-type=t3a.large}
-  '3': {constraints: instance-type=t3a.medium}
-  '4': {constraints: instance-type=t3a.medium}
-  '5': {constraints: instance-type=t3a.medium}
-  '6': {constraints: instance-type=t3a.medium}
-  '7': {constraints: instance-type=t3a.medium}
-  '8': {constraints: instance-type=t3a.medium}
+  '3': {constraints: instance-type=t3a.small}
+  '4': {constraints: instance-type=t3a.small}
+  '5': {constraints: instance-type=t3a.small}
+  '6': {constraints: instance-type=t3a.small}
+  '7': {constraints: instance-type=t3a.small}
+  '8': {constraints: instance-type=t3a.small}
+  '9': {constraints: instance-type=t3a.small}
   # nova-compute
   '100': {constraints: instance-type=c5a.large}
   '101': {constraints: instance-type=c5a.large}
@@ -29,7 +30,7 @@ applications:
     num_units: 3
     options:
       max-connections: 1000
-      innodb-buffer-pool-size: 256M
+      innodb-buffer-pool-size: 512M
       tuning-level: fast
     to:
     - 0
@@ -38,7 +39,6 @@ applications:
   ovn-central:
     charm: ovn-central
     channel: *ovn-channel
-    constraints: instance-type=t3a.medium
     num_units: 3
     to:
     - 0
@@ -61,15 +61,6 @@ applications:
     num_units: 1
     to:
     - 1
-  vault:
-    charm: vault
-    channel: 1.7/stable
-    constraints: instance-type=t3a.medium
-    num_units: 1
-    options:
-      auto-generate-root-ca-cert: true
-    to:
-    - 2
   glance:
     charm: glance
     channel: *openstack-channel
@@ -99,7 +90,7 @@ applications:
       dns-domain: openstack.lan.
       enable-ml2-dns: true
       enable-ml2-port-security: true
-      flat-network-providers: ''
+      flat-network-providers: physnet1
       manage-neutron-plugin-legacy-mode: false
       neutron-security-groups: true
       vlan-ranges: physnet1
@@ -162,6 +153,15 @@ applications:
       worker-multiplier: *worker-multiplier
     to:
     - 8
+  vault:
+    charm: vault
+    channel: 1.7/stable
+    constraints: instance-type=t3a.medium
+    num_units: 1
+    options:
+      auto-generate-root-ca-cert: true
+    to:
+    - 9
   nova-compute:
     charm: yoshi-nova-compute # LP:1977803
     channel: latest/beta
