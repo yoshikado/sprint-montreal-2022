@@ -1,0 +1,5 @@
+/certs/*
+!/certs/.gitkeep
+/demoCA/
+/keys/ssh/*
+!/keys/ssh/.gitkeep
