@@ -5,23 +5,23 @@ variables:
   openstack-origin:     &openstack-origin     cloud:focal-yoga
   worker-multiplier:    &worker-multiplier    0.1
 machines:
-  '0': {constraints: instance-type=t3a.large}
-  '1': {constraints: instance-type=t3a.large}
-  '2': {constraints: instance-type=t3a.large}
-  '3': {constraints: instance-type=t3a.small}
-  '4': {constraints: instance-type=t3a.small}
-  '5': {constraints: instance-type=t3a.small}
-  '6': {constraints: instance-type=t3a.small}
-  '7': {constraints: instance-type=t3a.small}
-  '8': {constraints: instance-type=t3a.small}
-  '9': {constraints: instance-type=t3a.small}
+  '0': {constraints: instance-type=t3a.large root-disk=30G}
+  '1': {constraints: instance-type=t3a.large root-disk=30G}
+  '2': {constraints: instance-type=t3a.large root-disk=30G}
+  '3': {constraints: instance-type=t3a.small root-disk=30G}
+  '4': {constraints: instance-type=t3a.small root-disk=30G}
+  '5': {constraints: instance-type=t3a.small root-disk=30G}
+  '6': {constraints: instance-type=t3a.small root-disk=30G}
+  '7': {constraints: instance-type=t3a.small root-disk=30G}
+  '8': {constraints: instance-type=t3a.small root-disk=30G}
+  '9': {constraints: instance-type=t3a.small root-disk=30G}
   # nova-compute
-  '100': {constraints: instance-type=c5a.large}
-  '101': {constraints: instance-type=c5a.large}
-  '102': {constraints: instance-type=c5a.large}
-  '103': {constraints: instance-type=c5a.large}
-  '104': {constraints: instance-type=c5a.large}
-  '105': {constraints: instance-type=c5a.large}
+  '100': {constraints: instance-type=c5a.large root-disk=100G}
+  '101': {constraints: instance-type=c5a.large root-disk=100G}
+  '102': {constraints: instance-type=c5a.large root-disk=100G}
+  '103': {constraints: instance-type=c5a.large root-disk=100G}
+  '104': {constraints: instance-type=c5a.large root-disk=100G}
+  '105': {constraints: instance-type=c5a.large root-disk=100G}
 
 applications:
   mysql-innodb-cluster:
