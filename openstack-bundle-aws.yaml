@@ -5,9 +5,11 @@ variables:
   openstack-origin:     &openstack-origin     cloud:focal-yoga
   worker-multiplier:    &worker-multiplier    0.1
 machines:
+  # ovn-central & mysql-innodb-cluster & rabbitmq
   '0': {constraints: instance-type=t3a.large root-disk=30G}
   '1': {constraints: instance-type=t3a.large root-disk=30G}
   '2': {constraints: instance-type=t3a.large root-disk=30G}
+  # openstack components
   '3': {constraints: instance-type=t3a.small root-disk=30G}
   '4': {constraints: instance-type=t3a.small root-disk=30G}
   '5': {constraints: instance-type=t3a.small root-disk=30G}
@@ -15,13 +17,14 @@ machines:
   '7': {constraints: instance-type=t3a.small root-disk=30G}
   '8': {constraints: instance-type=t3a.small root-disk=30G}
   '9': {constraints: instance-type=t3a.small root-disk=30G}
+  '10': {constraints: instance-type=t3a.small root-disk=30G}
   # nova-compute
-  '100': {constraints: instance-type=c5a.large root-disk=100G}
-  '101': {constraints: instance-type=c5a.large root-disk=100G}
-  '102': {constraints: instance-type=c5a.large root-disk=100G}
-  '103': {constraints: instance-type=c5a.large root-disk=100G}
-  '104': {constraints: instance-type=c5a.large root-disk=100G}
-  '105': {constraints: instance-type=c5a.large root-disk=100G}
+  '100': {constraints: instance-type=c6a.xlarge root-disk=100G} # one size larger for octavia-retrofit
+  '101': {constraints: instance-type=c6a.large root-disk=100G}
+  '102': {constraints: instance-type=c6a.large root-disk=100G}
+  '103': {constraints: instance-type=c6a.large root-disk=100G}
+  '104': {constraints: instance-type=c6a.large root-disk=100G}
+  '105': {constraints: instance-type=c6a.large root-disk=100G}
 
 applications:
   mysql-innodb-cluster:
@@ -44,23 +47,23 @@ applications:
     - 0
     - 1
     - 2
-  glance-simplestreams-sync:
-    charm: glance-simplestreams-sync
-    channel: *openstack-channel
-    num_units: 1
-    options:
-      mirror_list: '[{ url: "http://cloud-images.ubuntu.com/releases/", name_prefix:
-        "ubuntu:released", path: "streams/v1/index.sjson", max: 1, item_filters: ["release=focal",
-        "arch~(x86_64|amd64)", "ftype~(disk1.img|disk.img)"] }]'
-      use_swift: false
-    to:
-    - 0
   rabbitmq-server:
     charm: rabbitmq-server
     channel: 3.9/stable
     num_units: 1
     to:
     - 1
+  barbican:
+    charm: barbican
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      openstack-origin: *openstack-origin
+    to:
+    - 3
+  barbican-vault:
+    channel: *openstack-channel
+    charm: barbican-vault
   glance:
     charm: glance
     channel: *openstack-channel
@@ -69,7 +72,7 @@ applications:
       openstack-origin: *openstack-origin
       worker-multiplier: *worker-multiplier
     to:
-    - 3
+    - 4
   keystone:
     charm: keystone
     channel: *openstack-channel
@@ -79,7 +82,7 @@ applications:
       preferred-api-version: 3
       worker-multiplier: *worker-multiplier
     to:
-    - 4
+    - 5
   neutron-api:
     charm: neutron-api
     channel: *openstack-channel
@@ -95,7 +98,7 @@ applications:
       neutron-security-groups: true
       vlan-ranges: physnet1
     to:
-    - 5
+    - 6
   nova-cloud-controller:
     charm: nova-cloud-controller
     channel: *openstack-channel
@@ -105,7 +108,7 @@ applications:
       worker-multiplier: *worker-multiplier
       network-manager: Neutron
     to:
-    - 6
+    - 7
   neutron-api-plugin-ovn:
     charm: neutron-api-plugin-ovn
     channel: *openstack-channel
@@ -115,6 +118,7 @@ applications:
     num_units: 1
     options:
       openstack-origin: *openstack-origin
+      worker-multiplier: *worker-multiplier
       lb-mgmt-controller-cacert: include-base64://certs/controller_ca.pem
       lb-mgmt-controller-cert: include-base64://certs/controller_cert_bundle.pem
       lb-mgmt-issuing-ca-key-passphrase: foobar
@@ -124,7 +128,7 @@ applications:
       amp-ssh-key-name: amp_ssh_pub_key
       amp-ssh-pub-key: include-base64://keys/ssh/amphora_ssh.pub
     to:
-    - 7
+    - 8
   octavia-diskimage-retrofit:
     charm: octavia-diskimage-retrofit
     channel: *openstack-channel
@@ -152,7 +156,7 @@ applications:
       openstack-origin: *openstack-origin
       worker-multiplier: *worker-multiplier
     to:
-    - 8
+    - 9
   vault:
     charm: vault
     channel: 1.7/stable
@@ -161,7 +165,18 @@ applications:
     options:
       auto-generate-root-ca-cert: true
     to:
-    - 9
+    - 10
+  glance-simplestreams-sync:
+    charm: glance-simplestreams-sync
+    channel: *openstack-channel
+    num_units: 1
+    options:
+      mirror_list: '[{ url: "http://cloud-images.ubuntu.com/releases/", name_prefix:
+        "ubuntu:released", path: "streams/v1/index.sjson", max: 1, item_filters: ["release=focal",
+        "arch~(x86_64|amd64)", "ftype~(disk1.img|disk.img)"] }]'
+      use_swift: false
+    to:
+    - 100
   nova-compute:
     charm: yoshi-nova-compute # LP:1977803
     channel: latest/beta
@@ -181,6 +196,9 @@ applications:
     - 103
     - 104
     - 105
+  barbican-mysql-router:
+    charm: mysql-router
+    channel: 8.0/stable
   glance-mysql-router:
     charm: mysql-router
     channel: 8.0/stable
@@ -204,6 +222,12 @@ applications:
     channel: 8.0/stable
 relations:
 # openstack
+- ['barbican-mysql-router:db-router', 'mysql-innodb-cluster:db-router']
+- ['barbican-mysql-router:shared-db', 'barbican:shared-db']
+- ['barbican-vault:secrets-storage', 'vault:secrets']
+- ['barbican-vault:secrets', 'barbican:secrets']
+- ['barbican:amqp', 'rabbitmq-server:amqp']
+- ['barbican:identity-service', 'keystone:identity-service']
 - ['glance-simplestreams-sync:identity-service', 'keystone:identity-service']
 - ['glance:identity-service', 'keystone:identity-service']
 - ['glance:image-service', 'nova-cloud-controller:image-service']
