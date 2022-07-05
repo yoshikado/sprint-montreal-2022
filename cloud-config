@@ -1,0 +1,22 @@
+#cloud-config
+write_files:
+  - content: |
+      [Unit]
+      Description=simple-http
+       
+      [Service]
+      WorkingDirectory=/var/www/html
+      ExecStart=/bin/bash -c "while true; do python3 -m http.server 80; done"
+       
+      [Install]
+      WantedBy=multi-user.target
+    owner: "root:root"
+    path: /etc/systemd/system/simple-http.service
+    permissions: "0644"
+runcmd:
+  - mkdir -p /var/www/html
+  - echo "focal $(hostname) (HTTP)" > /var/www/html/index.html
+  - systemctl daemon-reload
+  - systemctl enable simple-http.service
+  - systemctl start simple-http.service
+

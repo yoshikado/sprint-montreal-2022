@@ -6,7 +6,7 @@ set -xeu
 CERTIFICATES_DIR="./certs"
 PASSPHRASE="foobar"
 SUBJECT="/C=US/ST=Somestate/O=Org/CN=www.example.com"
-DAYS=36500
+DAYS=3650
 KEYSIZE=4096
 
 # Create certificates directory
